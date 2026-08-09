@@ -115,7 +115,7 @@ def main():
         with open(name, "w", encoding="utf-8") as file:
             json.dump(manifest, file, indent=2, ensure_ascii=False)
             file.write("\n")
-        print(f"{name}: {version} -> {manifest['url']}")
+        print(f"{name}: {manifest['version']} -> {manifest['url']}")
     return 0
 
 
