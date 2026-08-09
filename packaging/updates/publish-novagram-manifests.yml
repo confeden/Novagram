@@ -1,0 +1,48 @@
+name: Publish NovaGram update manifests
+
+# Lives in confeden/nova_updates as .github/workflows/publish-novagram-manifests.yml
+#
+# Reads the latest release of confeden/Novagram and rewrites Novagram_PC.json
+# and Novagram_android.json next to version.json. Writing happens with the
+# built-in GITHUB_TOKEN, because the workflow runs in the repository it writes
+# to; a secret is only needed to *read* confeden/Novagram when that repository
+# is private.
+
+on:
+  schedule:
+    # Four times a day. Clients poll every eight hours, so anything faster only
+    # spends Actions minutes without a release arriving sooner.
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: novagram-manifests
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build manifests from the latest release
+        env:
+          # Optional. Only set this when confeden/Novagram is private; for a
+          # public repository the unauthenticated API is enough.
+          RELEASES_TOKEN: ${{ secrets.NOVAGRAM_RELEASES_TOKEN }}
+        run: python3 .github/scripts/novagram_manifests.py
+
+      - name: Commit when something changed
+        run: |
+          if git diff --quiet -- Novagram_PC.json Novagram_android.json; then
+            echo "Manifests already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Novagram_PC.json Novagram_android.json
+          git commit -m "NovaGram: publish update manifests"
+          git push

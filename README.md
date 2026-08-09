@@ -331,6 +331,24 @@ breakpad не попадают в сборку, а единственный вы
 
 ---
 
+## Как проверить, что здесь написана правда
+
+Описанию можно не верить. Исходный код обеих платформ лежит в отдельных
+репозиториях, и каждый из них GitHub считает форком официального клиента — с
+пометкой «forked from» и кнопкой сравнения. Всё, что NovaGram добавляет, собрано
+в один коммит поверх официального тега, поэтому разница открывается одной
+ссылкой и читается построчно:
+
+- **ПК:** [сравнение с Telegram Desktop v7.0.9](https://github.com/telegramdesktop/tdesktop/compare/v7.0.9...confeden:novagram-desktop:novagram/v7.0.9)
+  — 47 файлов;
+- **Android:** [сравнение с Telegram Android](https://github.com/DrKLO/Telegram/compare/45ab8f43...confeden:novagram-android:novagram/v12.9.2)
+  — 89 файлов.
+
+Там видно и то, что добавлено, и то, что изменено в чужом коде. Для проекта,
+который обещает защиту, это единственное доказательство, которое чего-то стоит:
+можно самостоятельно убедиться, что клиент не делает ничего сверх описанного —
+и собрать его из этих же исходников самому.
+
 ## Устройство
 
 Раздел для тех, кому интересно, как это сделано внутри. Для повседневной работы
@@ -608,16 +626,17 @@ LLVM `lld-link` 22.1.7, Qt 5.15.19 (собирается скриптом под
 ## Документация
 
 - [`UPSTREAM_POLICY.md`](UPSTREAM_POLICY.md) — привязка к официальному апстриму.
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — состояние функций на обеих платформах.
-  Единственное место, где ведётся состояние, чтобы оно не разошлось в двух
-  файлах.
 - [`docs/build.md`](docs/build.md) — сборка, зафиксированные версии инструментов
   и ловушки, найденные на практике.
 - [`docs/privacy.md`](docs/privacy.md) — что отключено и какой служебный трафик
   сохранён намеренно.
-- Подробности реализации по платформам:
-  [`desktop/novagram-desktop/docs/NOVAGRAM_DESKTOP_ROADMAP.md`](desktop/novagram-desktop/docs/NOVAGRAM_DESKTOP_ROADMAP.md),
-  [`android/novagram-android/docs/NOVAGRAM_PRIVACY_ROADMAP.md`](android/novagram-android/docs/NOVAGRAM_PRIVACY_ROADMAP.md).
+- [`docs/privacy-push.md`](docs/privacy-push.md) — что уходит в push и что о нём
+  знает посредник.
+- [`docs/upstream-sync.md`](docs/upstream-sync.md) — порядок слияния с
+  официальными репозиториями.
+
+Состояние функций и то, что ещё не сделано, описано выше в этом файле — разделы
+«Возможности», «Честные границы» и «Что в работе».
 
 ## Лицензия
 
@@ -626,11 +645,11 @@ NovaGram — производная работа от официальных к�
 
 - Часть для ПК основана на Telegram Desktop и лицензирована под **GNU GPL
   версии 3** с особым исключением, разрешающим линковку с OpenSSL. См.
-  [`desktop/novagram-desktop/LICENSE`](desktop/novagram-desktop/LICENSE) и
-  [`desktop/novagram-desktop/LEGAL`](desktop/novagram-desktop/LEGAL).
+  [`LICENSE`](https://github.com/confeden/novagram-desktop/blob/novagram/v7.0.9/LICENSE) и
+  [`LEGAL`](https://github.com/confeden/novagram-desktop/blob/novagram/v7.0.9/LEGAL).
 - Часть для Android основана на Telegram для Android и лицензирована под
   **GNU GPL версии 2**. См.
-  [`android/novagram-android/LICENSE`](android/novagram-android/LICENSE).
+  [`LICENSE`](https://github.com/confeden/novagram-android/blob/novagram/v12.9.2/LICENSE).
 
 Авторские права на исходный код Telegram принадлежат его авторам.
 
@@ -651,3 +670,13 @@ Telegram API Terms of Service; сборка использует собстве�
 «Честные границы».
 
 Программа поставляется как есть, без каких-либо гарантий.
+
+---
+
+# Создано с ❤️
+
+🙋 **Группа в Телеграм:** [@nova_txt](https://t.me/nova_txt) — вопросы, новости,
+поддержка.
+
+☕ **[Отблагодарить](https://nova-app.eu/donate)** — если NovaGram оказался для вас полезным.
+Это необязательный способ сказать "спасибо".

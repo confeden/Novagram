@@ -1,0 +1,8 @@
+[submodule "desktop/novagram-desktop"]
+	path = desktop/novagram-desktop
+	url = https://github.com/confeden/novagram-desktop.git
+	branch = novagram/v7.0.9
+[submodule "android/novagram-android"]
+	path = android/novagram-android
+	url = https://github.com/confeden/novagram-android.git
+	branch = novagram/v12.9.2
