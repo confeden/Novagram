@@ -24,9 +24,15 @@
   "version": "7.0.9",
   "url": "https://github.com/confeden/Novagram/releases/download/v7.0.9%2F12.9.2/NovaGramSetup-7.0.9-x64.exe",
   "sha256": "…",
-  "release_url": "https://github.com/confeden/Novagram/releases/tag/v7.0.9%2F12.9.2"
+  "release_url": "https://github.com/confeden/Novagram/releases/tag/v7.0.9%2F12.9.2",
+  "size": 61234567
 }
 ```
+
+`size` добавлено позже остальных полей и нужно только полосе обновления, чтобы
+показать вес загрузки рядом с кнопкой. Отсутствие поля читается как «размер
+неизвестен» и просто ничего не показывает, поэтому манифесты прежнего формата
+остаются действительными.
 
 **Релиз один на обе платформы, а версий в нём две.** Тег несёт обе базы:
 

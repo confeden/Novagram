@@ -1,8 +1,11 @@
-param(
+﻿param(
     [string]$Task = ":TMessagesProj_App:assembleAfatRelease",
 
+    # Six of the eight cores. The remaining two keep the machine usable and
+    # leave room for the native build, which spawns its own jobs through
+    # CMAKE_BUILD_PARALLEL_LEVEL below.
     [ValidateRange(1, 16)]
-    [int]$MaxWorkers = 4
+    [int]$MaxWorkers = 6
 )
 
 $ErrorActionPreference = "Stop"

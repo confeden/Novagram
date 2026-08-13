@@ -1,4 +1,4 @@
-param(
+﻿param(
     [ValidateSet("Debug", "Release")]
     [string]$Config = "Release",
 
@@ -12,8 +12,11 @@ param(
 
     [switch]$PrepareOnly,
 
+    # Six of the eight cores. Ninja is what actually spends them, and the
+    # final link is single threaded, so a higher number shortens the compile
+    # phase without touching the peak memory of the link.
     [ValidateRange(1, 16)]
-    [int]$MaxParallelJobs = 4
+    [int]$MaxParallelJobs = 6
 )
 
 $ErrorActionPreference = "Stop"

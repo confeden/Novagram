@@ -111,6 +111,10 @@ def main():
             "url": asset["browser_download_url"],
             "sha256": digest(asset["url"], token),
             "release_url": release["html_url"],
+            # Only so the update bar can say how much it is about to download.
+            # Clients treat a missing "size" as unknown and show nothing, so
+            # manifests written before this field are still valid.
+            "size": asset.get("size", 0),
         }
         with open(name, "w", encoding="utf-8") as file:
             json.dump(manifest, file, indent=2, ensure_ascii=False)
