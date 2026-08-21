@@ -16,7 +16,14 @@
     # final link is single threaded, so a higher number shortens the compile
     # phase without touching the peak memory of the link.
     [ValidateRange(1, 16)]
-    [int]$MaxParallelJobs = 6
+    [int]$MaxParallelJobs = 6,
+
+    # Fall back to MSVC link.exe. Kept as an escape hatch: lld-link is the
+    # default below because it is several times faster on the final link, but
+    # a linker is exactly the kind of thing that can produce a binary which
+    # builds and then misbehaves, so there has to be a way back without
+    # editing this file.
+    [switch]$MsvcLink
 )
 
 $ErrorActionPreference = "Stop"
@@ -120,16 +127,28 @@ if ($Prepare) {
     if ($Qt6) { $prepareArgs += "qt6" }
     $prepareArgs += $PrepareStage
     $cmdLines += "call build\prepare\win.bat $($prepareArgs -join ' ')"
-    $cmdLines += "if errorlevel 1 exit /b %errorlevel%"
+    # exit, not exit /b: the batch is the top level of cmd /c, and with /b the
+    # failure did not reach PowerShell - a build that stopped on a linker error
+    # reported success, which is the worst possible way for a build to fail.
+    $cmdLines += "if errorlevel 1 exit %errorlevel%"
     $cmdLines += "cd /d $(Quote-Cmd $telegramRoot)"
 }
 
 $configureArgs = @(
     "-GNinja Multi-Config",
     "-DCMAKE_C_COMPILER=cl",
-    "-DCMAKE_CXX_COMPILER=cl",
-    "-DCMAKE_LINKER=$lldLink"
+    "-DCMAKE_CXX_COMPILER=cl"
 )
+if ($MsvcLink) {
+    $configureArgs += "-DCMAKE_LINKER_TYPE=DEFAULT"
+} else {
+    # CMAKE_LINKER alone does nothing here - it was set for a long time and
+    # build.ninja still called MSVC link.exe, with not one mention of lld in
+    # it. CMAKE_LINKER_TYPE is the knob CMake actually reads (3.29+), and it
+    # is what makes the final link use lld-link.
+    $configureArgs += "-DCMAKE_LINKER_TYPE=LLD"
+    $configureArgs += "-DCMAKE_LINKER=$lldLink"
+}
 if ($Qt6) { $configureArgs += "qt6" }
 if ($ForceConfigure) { $configureArgs += "force" }
 $configureArgs += @(
@@ -142,9 +161,15 @@ $configureArgs += @(
 )
 if (!$PrepareOnly) {
     $cmdLines += "call $(Quote-Cmd (Join-Path $telegramRoot 'configure.bat')) $($configureArgs -join ' ')"
-    $cmdLines += "if errorlevel 1 exit /b %errorlevel%"
+    # exit, not exit /b: the batch is the top level of cmd /c, and with /b the
+    # failure did not reach PowerShell - a build that stopped on a linker error
+    # reported success, which is the worst possible way for a build to fail.
+    $cmdLines += "if errorlevel 1 exit %errorlevel%"
     $cmdLines += "cmake --build $(Quote-Cmd $buildDir) --config $Config --target Telegram --parallel $MaxParallelJobs"
-    $cmdLines += "if errorlevel 1 exit /b %errorlevel%"
+    # exit, not exit /b: the batch is the top level of cmd /c, and with /b the
+    # failure did not reach PowerShell - a build that stopped on a linker error
+    # reported success, which is the worst possible way for a build to fail.
+    $cmdLines += "if errorlevel 1 exit %errorlevel%"
 }
 
 $cmdPath = Join-Path $env:TEMP ("novagram-desktop-build-" + [guid]::NewGuid().ToString("N") + ".cmd")
