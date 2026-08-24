@@ -1,6 +1,6 @@
 # NovaGram build notes
 
-Development plans live in [`../ROADMAP.md`](../ROADMAP.md).
+What each feature covers, and what it deliberately does not: [`features.md`](features.md).
 
 ## Layout
 
