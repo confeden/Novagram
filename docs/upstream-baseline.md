@@ -1,13 +1,13 @@
 # Что официальный Telegram оставляет на устройстве
 
 Полный разбор поведения официальных клиентов на тех самых версиях, поверх которых
-собран форк: Telegram Desktop `v7.0.9` и Telegram for Android `12.9.2 (6991)`. README
+собран форк: Telegram Desktop `v7.1.1` и Telegram for Android `12.10.0 (7031)`. README
 показывает из него четыре пункта на платформу; здесь всё, с указанием мест в коде.
 
 Это не догадки: каждый пункт находится в исходном коде официальных клиентов. Ссылки
 на файлы и строки даны для версий выше — в других версиях номера строк уезжают.
 
-## Windows (Telegram Desktop v7.0.9)
+## Windows (Telegram Desktop v7.1.1)
 
 - **Локальный код-пароль по умолчанию выключен**, и без него `tdata` зашифрован
   ключом от пустого пароля — **одна** итерация над солью, лежащей в том же файле
@@ -53,13 +53,13 @@
   `SystemProductName` из `HKLM\HARDWARE\DESCRIPTION\System\BIOS`, и только если она
   не проходит проверку, склеивает `SystemFamily` с `BaseBoardProduct` из SMBIOS.
   Значение при этом переопределяемо самим пользователем: `customDeviceModel()`
-  (`core/core_settings.cpp:1442`, «Настройки → Устройства → переименовать») подменяет
+  (`core/core_settings.cpp:1454`, «Настройки → Устройства → переименовать») подменяет
   строку, которую отдаёт `Instance::Private::deviceModel()`.
 - **Проверка орфографии** включена по умолчанию (`spellcheckerEnabled`,
   `core/core_settings.h`) и отдаёт набираемый текст системному компоненту проверки
   орфографии Windows — локально, без сети; выключается штатной настройкой.
 
-## Android (Telegram for Android 12.9.2)
+## Android (Telegram for Android 12.10.0)
 
 - **Код-пароль — это SHA-256 в обычном XML:** он гасит экран и всё. База переписки
   `cache4.db` и `tgnet.dat` с ключами авторизации MTProto лежат нешифрованными и до
@@ -82,8 +82,8 @@
   `MozillaDnsLoadTask` (`onRequestNewServerIpAndPort`, `second == 0/1/2`), и её
   второй шаг ходит на `https://dns.google.com/resolve?name=…&type=ANY&random_padding=…`
   с поддельным User-Agent (iPhone Safari) и **без** подменённого `Host`
-  (`ConnectionsManager.java:1255`). Имя прокси разрешает отдельный путь —
-  `ResolveHostByNameTask` (`ConnectionsManager.java:1149`): запрос на
+  (`ConnectionsManager.java:1245`). Имя прокси разрешает отдельный путь —
+  `ResolveHostByNameTask` (`ConnectionsManager.java:1140`): запрос на
   `https://www.google.com/resolve?name=…&type=A` с `Host: dns.google.com`, а при
   неудаче `InetAddress.getByName`, то есть системный резолвер — та самая сеть, от
   которой прячутся.
@@ -91,13 +91,13 @@
   «показывать текст» в оригинале есть, но он один на оба поведения:
   `NotificationsController` читает `EnablePreviewAll` / `EnablePreviewGroup` /
   `EnablePreviewChannel` и пер-чатный `content_preview_<dialogId>`, а
-  `updateServerNotificationsSettings` (`NotificationsController.java:6144`) отправляет
+  `updateServerNotificationsSettings` (`NotificationsController.java:6152`) отправляет
   тот же флаг серверу как `req.settings.show_previews`. Выключив превью, пользователь
   гасит и push-payload, и локальное уведомление — и делает это сразу на всех
   устройствах аккаунта. Пока превью включены (умолчание), текст показывается на
   экране блокировки целиком.
 - **Аттестация устройства при входе — ветка, а не обязательный шаг.** В
-  `LoginActivity.fillNextCodeParams` (`:1769`) запрос уходит, только если сервер
+  `LoginActivity.fillNextCodeParams` (`:1770`) запрос уходит, только если сервер
   вернул `TL_auth_sentCodeTypeFirebaseSms` с непустым `play_integrity_nonce` **и**
   `GooglePushListenerServiceProvider.INSTANCE.hasServices()` истинно; SafetyNet —
   путь отката при провале Play Integrity. Без Google Play Services ветка не
@@ -112,7 +112,7 @@
   метаданные как побочный эффект: на Android `SendMessagesHelper.generatePhotoSizes`
   декодирует файл в `Bitmap` и пересобирает JPEG через
   `ImageLoader.scaleAndSaveImage` → `Bitmap.compress`; на ПК `ComputePhotoJpegBytes`
-  (`storage/localimageloader.cpp:174`) в общем случае пишет заново через
+  (`storage/localimageloader.cpp:181`) в общем случае пишет заново через
   `QImageWriter("JPEG")` с quality 87. Метаданные переживают отправку там, где файл
   не пережимается: при отправке документом («без сжатия»), а на ПК — ещё и в двух
   ветках `ComputePhotoJpegBytes`, где фотография уходит как есть (достаточно

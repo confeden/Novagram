@@ -1,11 +1,11 @@
 # NovaGram build notes
 
-Development plans live in [`roadmap.md`](roadmap.md).
+Development plans live in [`../ROADMAP.md`](../ROADMAP.md).
 
 ## Layout
 
 - `android/novagram-android`: Telegram Android upstream mirror with NovaGram package/signing config.
-- `desktop/novagram-desktop`: Telegram Desktop `v7.0.1` beta mirror.
+- `desktop/novagram-desktop`: Telegram Desktop `v7.1.1` mirror.
 - `keys`: local signing material, ignored by Git.
 - `dist`: installer outputs, ignored by Git.
 - `.novagram.local.ps1`: local API/signing environment, ignored by Git.
@@ -71,7 +71,7 @@ signer: CN=Brent NovaGram, OU=NovaGram, O=Brent, L=Local, ST=Local, C=RU
 Base tag:
 
 ```text
-telegramdesktop/tdesktop v7.0.1
+telegramdesktop/tdesktop v7.1.1
 ```
 
 Build:
@@ -85,7 +85,8 @@ selects Qt 5.15.19 on win32 without the `qt6` flag, and that is what the
 official client ships. Building with Qt 6.11.1 changes font rasterization
 (DirectWrite instead of the GDI path, so text looks thinner than the official
 client) and switches window painting to QRhi over D3D11, which makes dragging
-the window visibly less smooth. See the roadmap section "Версия Qt".
+the window visibly less smooth. See the "Версия Qt для ПК фиксирована" note in
+[`internals.md`](internals.md).
 
 First dependency bootstrap:
 
