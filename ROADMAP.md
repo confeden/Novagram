@@ -1,13 +1,14 @@
 # NovaGram — project state
 
 Privacy fork of Telegram for Windows + Android (two submodules), shipped as one release
-carrying both upstream bases. `v7.0.9.3/12.9.2.3` is published.
+carrying both upstream bases. `v7.1.1/12.10.0` is drafted; `v7.0.9.3/12.9.2.3` is the
+published one.
 
 ## Status
 
 | ID | Component | State | Evidence |
 |---|---|---|---|
-| S1 | Release `v7.0.9.3/12.9.2.3` | ok | published; both artifacts in `dist/`; manifests reissued |
+| S1 | Release `v7.1.1/12.10.0` | draft | tag pushed, both artifacts attached, notes written; not published. `v7.0.9.3/12.9.2.3` is still Latest |
 | S2 | Desktop base `tdesktop v7.1.1` | ok | merged, builds, `NovaGram.exe` reports `7.1.1.0`; branch name `novagram/v7.0.7` is historic |
 | S3 | Android base `Telegram Android 12.10.0 (7031)` | ok | merged, builds through R8; APK reports `12.10.0`, code `70319` |
 | S4 | Emergency PIN → wipe → decoy | ok | run on both platforms |
@@ -22,10 +23,10 @@ carrying both upstream bases. `v7.0.9.3/12.9.2.3` is published.
 | S13 | Filename masking + JPEG/PNG scrub | unverified | builds only; other formats out of scope |
 | S14 | Emergency PIN in a live unlocked desktop session | broken | wipe works on cold start only — cache DBs open, Windows refuses deletion |
 | S15 | Hardware binding of PIN state | ok Android / planned desktop | Keystore/StrongBox; desktop DPAPI/TPM not started |
-| S16 | Upstream comparison branches | unverified | README claims a match (116/118 files); not re-checked here |
+| S16 | Upstream comparison branches | ok | `git diff --name-only <base>...HEAD` gives 117 desktop / 128 Android, the numbers README prints; zero upstream commits behind |
 | S17 | Reproducible build | broken | none exists; Releases binaries cannot be tied to the source |
 | S18 | Root build logs | ok | `android-merge-build.log` and `desktop-merge-build.log` are the v7.1.1/12.10.0 builds |
-| S19 | Device binding of local data | ok both, minus the desktop blocked screen | stolen-folder hole closed (I14, M30-M31, N16). Both theft paths run by hand; what was run and what is still unseen: `kb/feature-status.md` |
+| S19 | Device binding of local data | ok both | stolen-folder hole closed (I14, M30-M31, N16). Both theft paths run by hand; what was run and what is still unseen: `kb/feature-status.md` |
 
 ## Map
 
@@ -55,7 +56,7 @@ before touching code, it replaces exploratory search. One ambiguity worth knowin
 
 ## Gotchas
 
-- **G1** Desktop build calls itself the old version → version compiles from generated-but-committed `core/version.h`, and `set_version.py` mangles the 4th digit into an alpha → edit `version.h`, `build/version`, both `.rc` files and `packaging/novagram.iss` by hand — four places. `kb/build.md#g1`
+- **G1** Desktop build calls itself the old version → version compiles from generated-but-committed `core/version.h`, and `set_version.py` mangles the 4th digit into an alpha → edit `version.h`, `build/version`, both `.rc` files and `packaging/novagram.iss` by hand, plus Android `NovaUpdateChecker.RELEASE_TAG` — five places. `kb/build.md#g1`
 - **G2** `SIGSEGV, pc=0` on `Thread-19` shortly after start, arm64 below Android 12 → `ANDROID_PLATFORM` above `minSdkVersion` makes clang emit `R_AARCH64_TLSDESC` → keep them equal; `llvm-readelf -r libtmessages.*.so \| grep TLSDESC` must be empty. `kb/build.md#g2`
 - **G3** `minifyAfatReleaseWithR8` fails "Missing class" → R8 strips a class reachable only via an upstream hook (`NovaUpdateLayout`) → `-keep` in `proguard-rules.pro`. Debug never catches it. `kb/build.md#g3`
 - **G4** `LNK1104` / `failed to write output 'NovaGram.exe': permission denied` → a client started from `out/` is still running (installed copy is harmless) → close `out/*.lnk`. `kb/build.md#g4`
@@ -132,17 +133,17 @@ before touching code, it replaces exploratory search. One ambiguity worth knowin
 
 ## Now
 
-Both bases are current, the gate passes for the first time (S2, S3), and both merged builds
-were launched: desktop opens its bound profile (`device lock: bound`), Android keeps its
-session with `tgnet.dat` still sealed and does not hit G2 on Android 9 arm64. Left unseen:
-the desktop blocked screen and the D14 toggle. Nothing is released — no tag, no installer.
+`v7.1.1/12.10.0` sits as a GitHub **draft** with both artifacts attached; everything is
+pushed. The themed sweep came back with no invisible text anywhere, and two things it did
+find are fixed and rebuilt: a stale `RELEASE_TAG` and six toggle titles that ellipsized
+mid-word (G1, G30). Publishing is the owner's call. Residue in `kb/feature-status.md`: the D14
+toggle and four cosmetic defects, three of them upstream.
 
 ## Next
 
 | ID | Task | Why / blocked on |
 |---|---|---|
 | P1 | Run the unverified list by hand, top-down | S7, S8, S12, S13 — ranked list in `kb/feature-status.md` |
-| P2 | Confirm the upstream comparison branches match the shipped release | S16 — README claims it; it is the project's only public honesty check |
 | P3 | Emergency PIN inside an unlocked desktop session | S14, the last broken component |
 | P4 | Hardware binding of desktop PIN state (DPAPI/TPM) | S15 — so the lockout counter survives deleting `tdata/novagram_pin` |
 | P5 | Jump to a peer by numeric ID from message text | UI half done; a bare ID needs `access_hash`, so it must distinguish "no such peer" from "no access key". `docs/peer-id.md` |

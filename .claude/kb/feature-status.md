@@ -18,7 +18,7 @@ A planned feature is never shown to the user as working until it reaches `built`
 | Optional telemetry off | built | built |
 | Separate NovaGram settings section | built | verified |
 | Primary PIN as local encryption key | verified | limited: login gate only, Telegram DB not encrypted |
-| Stolen data folder cannot sign in (device binding, S19) | verified; blocked screen not seen | verified |
+| Stolen data folder cannot sign in (device binding, S19) | verified | verified |
 | PIN verifier under a Keystore key | — | verified (StrongBox) |
 | Disable primary PIN from settings | verified (stock path) | built |
 | PIN prompt moment, 5 options | built; minimize-to-tray option verified | built |
@@ -128,9 +128,7 @@ still stands:
 9. Muting a member on desktop.
 10. The `Erase evidence` report.
 11. The lockout countdown after three wrong PINs.
-12. The desktop blocked screen and its "start over" button (S19) — the foreign copy was
-    opened with the old build, so the screen itself never rendered.
-13. The D14 device-binding toggle, on either platform.
+12. The D14 device-binding toggle, on either platform.
 
 ## Verification tooling
 
@@ -163,9 +161,14 @@ Keystore, i.e. a foreign device as far as the key is concerned): the client came
 `NovaPinGateActivity` with "Данные принадлежат другому устройству", not signed in.
 "Начать заново" wiped local data and left an ordinary first run.
 
-**Still unseen.** The desktop blocked screen and its reset button — the foreign copy was
-opened with the old build, so the new screen never rendered. The D14 toggle was never
-switched on either platform.
+**Still unseen.** The D14 toggle, on either platform.
+
+**The desktop blocked screen is verified.** Simulated without a second machine: copy the
+bound profile, overwrite `tdata/novagram_device` with the same number of random bytes, start
+with `-workdir` on the copy. The log says `device lock: the binding file is not readable` ->
+`foreign, mechanism: нет`, and the window carries the explanation plus a "Начать заново"
+button. Read it with UI Automation over the process - `screencap`-style capture comes out
+masked, the client excludes its own windows from screen capture.
 
 **Re-checked after the v7.1.1 / 12.10.0 merge.** Both merged builds were launched and the
 binding still holds: desktop logs `NovaGram device lock: bound, mechanism: Windows DPAPI +
@@ -217,3 +220,35 @@ aapt2 dump resources app.apk | grep -A 3 "string/NovaPushPreviewInfo"
 
 It prints the default and the `(ru)` value side by side, so a missing translation shows up
 immediately.
+
+## Themed sweep before v7.1.1/12.10.0 — what it found
+
+Six screens × two themes × two devices (Mi A1 / Android 9 / 360 dp, Pixel 4a / Android 14 /
+393 dp). **No invisible text anywhere** — G29 is closed and does not come back on any screen.
+
+Fixed before the draft went up:
+
+- **`NovaUpdateChecker.RELEASE_TAG` was stale.** The About row said
+  `v7.0.9.3/12.9.2.3` two lines above a footnote reading 12.10.0. Only the Android half of
+  the joint tag can be read from the package, so the whole string is written by hand - a
+  fifth place a version bump has to reach (G1).
+- **Six toggle titles ellipsized mid-word.** `TextCheckCell` gives the title one line.
+  Measured on the 360 dp stand: 26 characters survive, 31 do not. Titles now drop whatever
+  the section header already says, and none exceeds 26 in either language. Subtitles - which
+  carry the promise and its limit - were not touched.
+
+Left open, none of them a blocker:
+
+| What | Where | Whose |
+|---|---|---|
+| Connection status ("Подключение прокси") briefly replaces the screen title | NovaGram settings, Pixel, transient | upstream ActionBar behaviour |
+| "Добавить" button overlaps the stories caption until scrolled | Profile, Pixel only | upstream |
+| Light theme inside a chat: white status-bar icons over the light wallpaper | both devices | upstream; the chat screen does not re-tint |
+| "Изменить цвет имени" sits flush against the "Trump" pill | Chat settings, Mi A1 only | upstream layout at 360 dp |
+
+Two screens could not be seen as pictures: a private chat on either device is `FLAG_SECURE`
+while screenshot protection is on, so `screencap` returns zero bytes even under root. On the
+Pixel `uiautomator` still reads the texts; on the Mi A1 it refused on that screen. A private
+chat is therefore verified by text only - colour and overlap defects cannot be caught that
+way. The NovaGram settings screen itself is also `FLAG_SECURE` on the Mi A1; capture it on
+the Pixel instead.
