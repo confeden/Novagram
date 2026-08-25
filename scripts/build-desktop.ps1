@@ -157,7 +157,17 @@ $configureArgs += @(
     "-DDESKTOP_APP_DISABLE_AUTOUPDATE=ON",
     "-DDESKTOP_APP_DISABLE_CRASH_REPORTS=ON",
     "-DCMAKE_SYSTEM_VERSION=10.0.26100.0",
-    "-DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.26100.0"
+    "-DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.26100.0",
+    # No debug information in anything but Debug. Upstream asks for Embedded
+    # (-Z7) everywhere else, which put 23 GB of it into the object files and
+    # made lld-link spend most of its fifteen minutes, and 19 GB of memory,
+    # merging that into a 3.8 GB PDB that nothing here reads: crash reports are
+    # disabled two lines above and the project has no symbol server. Empty for
+    # the non-Debug configs also flips options_win.cmake to /DEBUG:NONE.
+    #
+    # Quoted for cmd.exe: the generated .cmd would read the < and > of the
+    # generator expression as redirection.
+    '"-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=$<$<CONFIG:Debug>:ProgramDatabase>"'
 )
 if (!$PrepareOnly) {
     $cmdLines += "call $(Quote-Cmd (Join-Path $telegramRoot 'configure.bat')) $($configureArgs -join ' ')"
