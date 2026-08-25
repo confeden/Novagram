@@ -93,13 +93,13 @@ APK ставится вручную.
 котором собран выпуск, и ничего из апстрима не теряют, поэтому разница открывается
 одной ссылкой и читается построчно:
 
-- **ПК:** [сравнение с Telegram Desktop `v7.1.1`](https://github.com/telegramdesktop/tdesktop/compare/v7.1.1...confeden:novagram-desktop:novagram/v7.0.7)
-- **Android:** [сравнение с Telegram Android `12.10.0`](https://github.com/DrKLO/Telegram/compare/3f03bfc7...confeden:novagram-android:master)
+- **ПК:** [сравнение с Telegram Desktop `v7.1.2`](https://github.com/telegramdesktop/tdesktop/compare/v7.1.2...confeden:novagram-desktop:novagram/v7.0.7)
+- **Android:** [сравнение с Telegram Android `12.10.0`](https://github.com/DrKLO/Telegram/compare/7df875ed...confeden:novagram-android:master)
 
 Обе ссылки показывают **текущее** состояние, то есть ровно тот код, из которого
-собран последний выпуск `v7.1.1/12.10.0`: 117 изменённых файлов на ПК и 128 на
+собран последний выпуск `v7.1.2/12.10.0.1`: 117 изменённых файлов на ПК и 128 на
 Android, ни одного коммита апстрима позади. Имя ветки на ПК осталось историческим
-(`novagram/v7.0.7`) — база у неё всё равно `v7.1.1`, и это видно в самом сравнении.
+(`novagram/v7.0.7`) — база у неё всё равно `v7.1.2`, и это видно в самом сравнении.
 
 Чего эта проверка не даёт: она показывает исходный код, а не то, что бинарник в
 Releases собран именно из него. Воспроизводимой сборки у форка нет, собрать и
@@ -113,7 +113,7 @@ Releases собран именно из него. Воспроизводимой
 принудительно — ключом `-Force`. Подробности в
 [`UPSTREAM_POLICY.md`](UPSTREAM_POLICY.md).
 
-Базы текущего выпуска: Telegram Desktop `v7.1.1` (Windows) и Telegram for Android
+Базы текущего выпуска: Telegram Desktop `v7.1.2` (Windows) и Telegram for Android
 `12.10.0 (7031)`. Релиз один на обе платформы, и тег несёт обе базы:
 `v<база ПК>/<база Android>`. Клиент сравнивает только свою половину.
 

@@ -39,7 +39,7 @@ upstream = https://github.com/telegramdesktop/tdesktop.git
 Current base:
 
 ```text
-v7.1.1
+v7.1.2
 ```
 
 Sync beta:

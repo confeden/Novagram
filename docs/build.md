@@ -5,7 +5,7 @@ What each feature covers, and what it deliberately does not: [`features.md`](fea
 ## Layout
 
 - `android/novagram-android`: Telegram Android upstream mirror with NovaGram package/signing config.
-- `desktop/novagram-desktop`: Telegram Desktop `v7.1.1` mirror.
+- `desktop/novagram-desktop`: Telegram Desktop `v7.1.2` mirror.
 - `keys`: local signing material, ignored by Git.
 - `dist`: installer outputs, ignored by Git.
 - `.novagram.local.ps1`: local API/signing environment, ignored by Git.
