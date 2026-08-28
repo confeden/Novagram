@@ -16,11 +16,25 @@ network operations required to provide Telegram functionality.
 ## Retained operational traffic
 
 - MTProto authentication, message synchronization, media transfer, presence,
-  read receipts, typing indicators, and device registration.
-- Firebase Cloud Messaging token and data delivery for push notifications.
-- Firebase Remote Config as an official client's connectivity fallback.
+  typing indicators, and device registration. Read receipts are covered by a
+  separate feature and are not unconditionally retained.
 - Sponsored-message retrieval, display, view, and click reporting required by
-  the Telegram API Terms of Service.
+  the Telegram API Terms of Service. Sponsored *search* suggestions are not:
+  that request carried the text typed into the search box, which is content
+  rather than an ad impression, and it was removed.
+
+## Not present in shipped builds
+
+Two entries previously listed as retained traffic do not occur at all, and are
+recorded here so the claim is not made again:
+
+- **Firebase Cloud Messaging.** The Firebase configuration resources are absent
+  from the APK, so `FirebaseApp.initializeApp()` returns null, messaging never
+  initialises, and no token is ever obtained or registered. Notifications
+  therefore arrive only over the client's own connection while it is alive.
+- **Firebase Remote Config.** Removed by upstream Telegram itself; the
+  emergency-configuration chain in this base has two steps and neither is
+  Firebase.
 
 Local application logs and local traffic counters are not uploaded by the
 telemetry paths disabled above. Push payload minimization is a separate feature

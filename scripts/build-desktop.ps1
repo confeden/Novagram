@@ -185,7 +185,20 @@ if (!$PrepareOnly) {
 $cmdPath = Join-Path $env:TEMP ("novagram-desktop-build-" + [guid]::NewGuid().ToString("N") + ".cmd")
 try {
     Set-Content -LiteralPath $cmdPath -Value ($cmdLines -join "`r`n") -Encoding ASCII
-    & cmd.exe /d /c (Quote-Cmd $cmdPath)
+    # CMake, ninja and the compilers all write ordinary warnings to the error
+    # stream, and with ErrorActionPreference = Stop PowerShell turns the first
+    # such line from a native command into a terminating NativeCommandError.
+    # The build then dies on a warning and blames this line instead of saying
+    # anything about the build - it survived this long only because a warm tree
+    # never reconfigures, and the first merge that forced a reconfigure killed
+    # it. Same family as G5 and G37: believe the exit code, nothing else.
+    $previousErrorAction = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        & cmd.exe /d /c (Quote-Cmd $cmdPath)
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+    }
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }

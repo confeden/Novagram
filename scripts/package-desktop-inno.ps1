@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$BuildDir = "D:\Documents\Coding\NovaGram\desktop\novagram-desktop\out",
     [string]$InnoRoot = "D:\Programs\Inno Setup 6"
 )
@@ -57,6 +57,22 @@ if ($signingEnabled) {
     if (!$setup) {
         throw "NovaGram installer was not created in $dist"
     }
-    & $signtool sign /fd SHA256 /f $env:NOVAGRAM_PFX /p $env:NOVAGRAM_PFX_PASSWORD $setup.FullName
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    # The client refuses to run an installer whose signature does not verify,
+    # and an untimestamped signature stops verifying the day the certificate
+    # expires - which would reject every installer ever built, not just new
+    # ones. A timestamp fixes the signature to the moment it was made.
+    $timestampUrls = @(
+        "http://timestamp.sectigo.com",
+        "http://timestamp.digicert.com"
+    )
+    $signed = $false
+    foreach ($tsa in $timestampUrls) {
+        & $signtool sign /fd SHA256 /tr $tsa /td SHA256 `
+            /f $env:NOVAGRAM_PFX /p $env:NOVAGRAM_PFX_PASSWORD $setup.FullName
+        if ($LASTEXITCODE -eq 0) { $signed = $true; break }
+        Write-Host "Timestamping through $tsa failed, trying the next one."
+    }
+    if (!$signed) {
+        throw "Signing failed: no timestamp authority answered. A signature without a timestamp expires with the certificate and would make every installer unverifiable, so this is not silently skipped."
+    }
 }

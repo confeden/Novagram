@@ -47,12 +47,25 @@ Push-Location $androidRoot
 try {
     $env:CMAKE_BUILD_PARALLEL_LEVEL = $MaxWorkers
     $gradleArgs = @($Task, "--max-workers=$MaxWorkers", "--no-parallel")
-    if (Test-Path -LiteralPath ".\gradlew.bat") {
-        & .\gradlew.bat @gradleArgs
-    } elseif (Test-Path -LiteralPath ".\gradlew") {
-        & bash .\gradlew @gradleArgs
-    } else {
-        & gradle @gradleArgs
+    # Gradle writes ordinary notes to the error stream - javac's "some input
+    # files use or override a deprecated API" is one - and with
+    # ErrorActionPreference = Stop PowerShell turns any such line from a native
+    # command into a terminating NativeCommandError. The build then dies on a
+    # note, reporting a PowerShell error at this line instead of anything about
+    # the build. Same family as G5: the failure said the wrong thing. The exit
+    # code is the only thing worth believing here, so ask for it explicitly.
+    $previousErrorAction = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        if (Test-Path -LiteralPath ".\gradlew.bat") {
+            & .\gradlew.bat @gradleArgs
+        } elseif (Test-Path -LiteralPath ".\gradlew") {
+            & bash .\gradlew @gradleArgs
+        } else {
+            & gradle @gradleArgs
+        }
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
     }
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 } finally {
