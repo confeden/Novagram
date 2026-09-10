@@ -132,12 +132,12 @@ Android. Скопированная папка на другом устройс�
 котором собран выпуск, и ничего из апстрима не теряют, поэтому разница открывается
 одной ссылкой и читается построчно:
 
-- **Windows:** [сравнение с Telegram Desktop `v7.2.7`](https://github.com/telegramdesktop/tdesktop/compare/v7.2.7...confeden:novagram-desktop:novagram/v7.0.7)
+- **Windows:** [сравнение с Telegram Desktop `v7.2.8`](https://github.com/telegramdesktop/tdesktop/compare/v7.2.8...confeden:novagram-desktop:novagram/v7.0.7)
 - **Android:** [сравнение с Telegram Android `12.10.1`](https://github.com/DrKLO/Telegram/compare/62b56a07...confeden:novagram-android:master)
 
 Обе ссылки показывают текущее состояние — ровно тот код, из которого собран последний
 выпуск: 178 изменённых файлов на ПК и 164 на Android, ни одного коммита апстрима позади.
-Имя ветки на ПК осталось историческим, база у неё всё равно `v7.2.7`, и это видно в
+Имя ветки на ПК осталось историческим, база у неё всё равно `v7.2.8`, и это видно в
 самом сравнении.
 
 **Чего эта проверка не даёт.** Она показывает исходный код, но не доказывает, что
