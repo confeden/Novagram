@@ -1,7 +1,7 @@
 [submodule "desktop/novagram-desktop"]
 	path = desktop/novagram-desktop
-	url = https://github.com/confeden/novagram-desktop.git
-	branch = novagram/v7.0.9
+	url = https://github.com/j46871417-ui/novagram-desktop.git
+	branch = feature/smart-connection-bypass
 [submodule "android/novagram-android"]
 	path = android/novagram-android
 	url = https://github.com/confeden/novagram-android.git
