@@ -205,3 +205,14 @@ try {
 } finally {
     Remove-Item -LiteralPath $cmdPath -Force -ErrorAction SilentlyContinue
 }
+
+# A build that succeeded keeps what the next one reuses and loses what no build reads any
+# more: outputs build.ninja stopped producing, and week-old logs. Housekeeping must not turn
+# a good build into a failed one, so a failure here only warns.
+if (!$PrepareOnly) {
+    try {
+        & (Join-Path $PSScriptRoot "prune-build-garbage.ps1") -Scope Desktop, Logs
+    } catch {
+        Write-Warning "Build garbage was not pruned: $($_.Exception.Message)"
+    }
+}

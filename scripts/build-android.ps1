@@ -54,6 +54,9 @@ try {
     # note, reporting a PowerShell error at this line instead of anything about
     # the build. Same family as G5: the failure said the wrong thing. The exit
     # code is the only thing worth believing here, so ask for it explicitly.
+    # Taken before Gradle starts: AGP stamps the native configuration this build
+    # uses after this moment, and that is how pruning tells current from stale.
+    $buildStartedAt = Get-Date
     $previousErrorAction = $ErrorActionPreference
     try {
         $ErrorActionPreference = "Continue"
@@ -70,4 +73,14 @@ try {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 } finally {
     Pop-Location
+}
+
+# A build that succeeded keeps what the next one reuses and loses what no build reads any
+# more: native folders of CMake configurations this build replaced (AGP never deletes
+# them, 5-10 GB each), and week-old logs. Housekeeping must not turn a good build into a
+# failed one, so a failure here only warns.
+try {
+    & (Join-Path $PSScriptRoot "prune-build-garbage.ps1") -Scope Android, Logs -BuildStartedAt $buildStartedAt
+} catch {
+    Write-Warning "Build garbage was not pruned: $($_.Exception.Message)"
 }

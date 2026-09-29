@@ -1,4 +1,4 @@
-param(
+﻿param(
     [ValidateSet("All", "Android", "Desktop")]
     [string]$Project = "All",
 
@@ -50,8 +50,36 @@ function Test-Ancestor {
     return ($LASTEXITCODE -eq 0)
 }
 
-function Get-LatestDesktopTag {
-    $candidates = Invoke-Git -Repository $desktopRoot -Arguments @("tag", "--list", "v[0-9]*") |
+# A beta is tagged exactly like a stable release, so the tag name cannot tell
+# them apart - the answer is inside the tag, in the version file the build reads.
+function Test-StableDesktopTag {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Tag
+    )
+
+    try {
+        $lines = Invoke-Git -Repository $desktopRoot -Arguments @("show", "${Tag}:Telegram/build/version")
+    } catch {
+        # A tag whose version file cannot be read says nothing about itself, and
+        # the fork does not build a base it could not identify.
+        return $false
+    }
+    $beta = $null
+    $alpha = $null
+    foreach ($line in $lines) {
+        if ($line -match '^\s*BetaChannel\s+(\d+)') { $beta = [int]$matches[1] }
+        elseif ($line -match '^\s*AlphaVersion\s+(\d+)') { $alpha = [int]$matches[1] }
+    }
+    return (($beta -eq 0) -and ($alpha -eq 0))
+}
+
+# The newest **stable** tag, plus the newest tag of any kind. Betas are read and
+# compared against the upstream-bug ledger (docs/NOVAGRAM.md, 10.1), but a
+# shipped build never stands on one: a privacy fork inherits every defect of its
+# base, and a beta is by definition the version upstream has not finished testing.
+function Get-LatestDesktopTags {
+    $candidates = @(Invoke-Git -Repository $desktopRoot -Arguments @("tag", "--list", "v[0-9]*") |
         ForEach-Object {
             if ($_ -match '^v(\d+)\.(\d+)\.(\d+)$') {
                 [pscustomobject]@{
@@ -59,12 +87,21 @@ function Get-LatestDesktopTag {
                     Version = [version]::new([int]$matches[1], [int]$matches[2], [int]$matches[3])
                 }
             }
-        }
-    $latest = $candidates | Sort-Object Version -Descending | Select-Object -First 1
-    if ($null -eq $latest) {
+        } | Sort-Object Version -Descending)
+    if ($candidates.Count -eq 0) {
         throw "No official Desktop vX.Y.Z tag was found."
     }
-    return $latest.Tag
+    $stable = $null
+    foreach ($candidate in $candidates) {
+        if (Test-StableDesktopTag -Tag $candidate.Tag) {
+            $stable = $candidate.Tag
+            break
+        }
+    }
+    if ($null -eq $stable) {
+        throw "No official Desktop vX.Y.Z tag is a stable release."
+    }
+    return [pscustomobject]@{ Stable = $stable; Newest = $candidates[0].Tag }
 }
 
 $state = $null
@@ -109,10 +146,15 @@ $result = [ordered]@{}
 $failures = [System.Collections.Generic.List[string]]::new()
 
 if ($Project -in @("All", "Desktop")) {
-    $desktopTag = Get-LatestDesktopTag
+    $desktopTags = Get-LatestDesktopTags
+    $desktopTag = $desktopTags.Stable
     $desktopCommit = (@(Invoke-Git -Repository $desktopRoot -Arguments @("rev-list", "-n", "1", $desktopTag)))[0].ToString().Trim()
     $desktopCheckedAt = if ($refreshDesktop) { $now } else { $desktopLastCheck }
-    $result.desktop = [ordered]@{ checkedAtUtc = $desktopCheckedAt.ToString("O"); tag = $desktopTag; commit = $desktopCommit }
+    $result.desktop = [ordered]@{ checkedAtUtc = $desktopCheckedAt.ToString("O"); tag = $desktopTag; commit = $desktopCommit; newestTag = $desktopTags.Newest }
+    if ($desktopTags.Newest -ne $desktopTag) {
+        # Not a failure: the ledger rule (I20) wants the beta looked at, not shipped.
+        Write-Warning "Upstream Desktop beta $($desktopTags.Newest) is newer than the stable base $desktopTag. Check the ledger rows against it (docs/NOVAGRAM.md, 10.1); do not build on it."
+    }
     if (!(Test-Ancestor -Repository $desktopRoot -Commit $desktopCommit)) {
         $failures.Add("Desktop base is behind $desktopTag ($desktopCommit). Integrate that official tag before building.")
     }
@@ -135,6 +177,7 @@ New-Item -ItemType Directory -Path (Split-Path -Parent $statePath) -Force | Out-
 $result | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $statePath -Encoding utf8
 
 if ($failures.Count -gt 0) {
+    $failures.Add("After integrating, re-check every open row of the upstream-bug ledger (docs/NOVAGRAM.md, 10.1) against the new base and record the version checked.")
     throw ($failures -join "`n")
 }
 

@@ -76,3 +76,11 @@ if ($signingEnabled) {
         throw "Signing failed: no timestamp authority answered. A signature without a timestamp expires with the certificate and would make every installer unverifiable, so this is not silently skipped."
     }
 }
+
+# dist/ keeps the two newest installers and APKs. Every published release carries both
+# files on GitHub, so older copies here are only weight.
+try {
+    & (Join-Path $PSScriptRoot "prune-build-garbage.ps1") -Scope Dist
+} catch {
+    Write-Warning "Old release files were not pruned: $($_.Exception.Message)"
+}
