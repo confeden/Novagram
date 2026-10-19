@@ -47,6 +47,12 @@ if (!$signingEnabled) {
     throw "Installer signing is required. Configure NOVAGRAM_PFX and NOVAGRAM_PFX_PASSWORD in .novagram.local.ps1."
 }
 
+# Refresh the bundled list snapshot; the copy already in BuildDir stays if offline.
+& (Join-Path $PSScriptRoot "fetch-forbidden-list.ps1") -BuildDir $BuildDir
+
+# The TLS helper of the Yandex masking setting, its runtime DLL and the roots file.
+& (Join-Path $PSScriptRoot "stage-terminator.ps1") -BuildDir $BuildDir
+
 & $iscc "/DBuildDir=$BuildDir" "/DOutputDir=$dist" $iss
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

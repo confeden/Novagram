@@ -182,6 +182,12 @@ if (!$PrepareOnly) {
     $cmdLines += "if errorlevel 1 exit %errorlevel%"
 }
 
+# The bundled snapshot of the forbidden-content list (beside the exe). It cannot fail the
+# build: offline, the copy from the last build stays.
+if (!$PrepareOnly) {
+    & (Join-Path $PSScriptRoot "fetch-forbidden-list.ps1") -BuildDir $buildDir
+}
+
 $cmdPath = Join-Path $env:TEMP ("novagram-desktop-build-" + [guid]::NewGuid().ToString("N") + ".cmd")
 try {
     Set-Content -LiteralPath $cmdPath -Value ($cmdLines -join "`r`n") -Encoding ASCII

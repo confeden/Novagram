@@ -104,6 +104,81 @@ function Get-LatestDesktopTags {
     return [pscustomobject]@{ Stable = $stable; Newest = $candidates[0].Tag }
 }
 
+# Android submodule pins the fork deliberately keeps apart from upstream/master.
+# Key: submodule path; value: the exact fork pin allowed and why. A pin that moves
+# again, on either side, fails the gate until the entry is re-examined. Empty now.
+$androidPinAllowList = @{
+    # "TMessagesProj/jni/tlottie" = @{ Commit = "<40-hex fork pin>"; Why = "<reason>" }
+}
+
+# Gitlinks (mode 160000) in one tree of the Android clone, path -> commit.
+function Get-Gitlinks {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Treeish
+    )
+
+    $links = @{}
+    foreach ($line in Invoke-Git -Repository $androidRoot -Arguments @("ls-tree", "-r", $Treeish)) {
+        if ($line -match '^160000 commit ([0-9a-f]{40})\t(.+)$') {
+            $links[$matches[2]] = $matches[1]
+        }
+    }
+    return $links
+}
+
+# G79: a merge in the standalone clone keeps the fork's old gitlinks (12.10.5 kept
+# media3, tlottie, jlatexmath), and a native library built from a stale pin breaks
+# JNI_OnLoad at runtime - nothing fails at build time. Two checks: the fork's pins
+# equal upstream's, and every submodule working tree sits on its pin (the build
+# compiles the working tree, not the gitlink). Never fixed with `git submodule
+# update`: this clone has no .git/modules layout the parent repo knows about.
+function Test-AndroidSubmodulePins {
+    param(
+        # Not Mandatory: PowerShell refuses an empty list for a mandatory parameter.
+        [System.Collections.Generic.List[string]]$Failures
+    )
+
+    $fork = Get-Gitlinks -Treeish "HEAD"
+    $upstream = Get-Gitlinks -Treeish "upstream/master"
+    $pinLines = [System.Collections.Generic.List[string]]::new()
+    foreach ($path in @(@($fork.Keys) + @($upstream.Keys) | Sort-Object -Unique)) {
+        $forkPin = if ($fork.ContainsKey($path)) { $fork[$path] } else { "(absent)" }
+        $upstreamPin = if ($upstream.ContainsKey($path)) { $upstream[$path] } else { "(absent)" }
+        if ($forkPin -eq $upstreamPin) { continue }
+        $allowed = $androidPinAllowList[$path]
+        if ($null -ne $allowed -and $allowed.Commit -eq $forkPin) {
+            Write-Warning "Android submodule $path is kept at fork pin $forkPin (upstream $upstreamPin) by the allow-list: $($allowed.Why)"
+            continue
+        }
+        $pinLines.Add("  $path`n    fork pin:     $forkPin`n    upstream pin: $upstreamPin")
+    }
+    if ($pinLines.Count -gt 0) {
+        $Failures.Add("Android submodule pins differ from upstream/master (G79 - a merge kept old gitlinks; stale native pins crash at runtime, not at build):`n$($pinLines -join "`n")`nMove each pin to upstream's commit inside that submodule, commit the gitlink in android/novagram-android, or add a justified entry to `$androidPinAllowList.")
+    }
+
+    $treeLines = [System.Collections.Generic.List[string]]::new()
+    foreach ($path in @($fork.Keys | Sort-Object)) {
+        $dir = Join-Path $androidRoot $path
+        $actual = $null
+        if (Test-Path -LiteralPath (Join-Path $dir ".git")) {
+            try {
+                $actual = (@(Invoke-Git -Repository $dir -Arguments @("rev-parse", "HEAD")))[0].ToString().Trim()
+            } catch {
+                $actual = $null
+            }
+        }
+        if ($null -eq $actual) {
+            $treeLines.Add("  $path`n    working tree: (not initialised)`n    fork pin:     $($fork[$path])")
+        } elseif ($actual -ne $fork[$path]) {
+            $treeLines.Add("  $path`n    working tree: $actual`n    fork pin:     $($fork[$path])")
+        }
+    }
+    if ($treeLines.Count -gt 0) {
+        $Failures.Add("Android submodule working trees are not on their gitlinks - the build would compile other sources than HEAD pins:`n$($treeLines -join "`n")`nCheck out the fork pin inside each submodule directory (never ``git submodule update`` here).")
+    }
+}
+
 $state = $null
 if (Test-Path -LiteralPath $statePath) {
     try {
@@ -144,6 +219,7 @@ if ($Project -in @("All", "Android") -and $refreshAndroid) {
 
 $result = [ordered]@{}
 $failures = [System.Collections.Generic.List[string]]::new()
+$baseBehind = $false
 
 if ($Project -in @("All", "Desktop")) {
     $desktopTags = Get-LatestDesktopTags
@@ -157,6 +233,7 @@ if ($Project -in @("All", "Desktop")) {
     }
     if (!(Test-Ancestor -Repository $desktopRoot -Commit $desktopCommit)) {
         $failures.Add("Desktop base is behind $desktopTag ($desktopCommit). Integrate that official tag before building.")
+        $baseBehind = $true
     }
 } elseif ($null -ne $state -and $null -ne $state.desktop) {
     $result.desktop = $state.desktop
@@ -168,7 +245,9 @@ if ($Project -in @("All", "Android")) {
     $result.android = [ordered]@{ checkedAtUtc = $androidCheckedAt.ToString("O"); ref = "upstream/master"; commit = $androidCommit }
     if (!(Test-Ancestor -Repository $androidRoot -Commit $androidCommit)) {
         $failures.Add("Android base is behind upstream/master ($androidCommit). Integrate that official commit before building.")
+        $baseBehind = $true
     }
+    Test-AndroidSubmodulePins -Failures $failures
 } elseif ($null -ne $state -and $null -ne $state.android) {
     $result.android = $state.android
 }
@@ -177,7 +256,9 @@ New-Item -ItemType Directory -Path (Split-Path -Parent $statePath) -Force | Out-
 $result | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $statePath -Encoding utf8
 
 if ($failures.Count -gt 0) {
-    $failures.Add("After integrating, re-check every open row of the upstream-bug ledger (docs/NOVAGRAM.md, 10.1) against the new base and record the version checked.")
+    if ($baseBehind) {
+        $failures.Add("After integrating, re-check every open row of the upstream-bug ledger (docs/NOVAGRAM.md, 10.1) against the new base and record the version checked.")
+    }
     throw ($failures -join "`n")
 }
 
