@@ -110,7 +110,7 @@ $env:NOVA_TELEGRAM_API_ID = $apiId
 $env:NOVA_TELEGRAM_API_HASH = $apiHash
 
 $cmdLines = @(
-    "@echo on",
+    "@echo off",
     "call $(Quote-Cmd $vcvars) 10.0.26100.0 -vcvars_ver=$msvcFamily",
     "set `"PATH=$($portablePaths -join ';');%PATH%`"",
     "set `"X8664=x64`"",

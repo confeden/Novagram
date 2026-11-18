@@ -14,6 +14,19 @@ $statePath = Join-Path $root ".analysis\upstream-check.json"
 $desktopRoot = Join-Path $root "desktop\novagram-desktop"
 $androidRoot = Join-Path $root "android\novagram-android"
 
+# HTML widgets introduce a native runtime with unresolved code-execution reports.
+# Remove this hold after reviewing a new upstream release. These are commit IDs,
+# so moving a tag or a branch cannot silently extend the exception.
+$desktopWidgetHold = @{
+    UpstreamTag = "v7.4.4"
+    UpstreamCommit = "bf4f714036f21c750d535dab199c811b3f9bfdd4"
+    ApprovedCommit = "3a2a9a34e833d3243a13787215b8a7cdcf5dc3c3"
+}
+$androidWidgetHold = @{
+    UpstreamCommit = "21f7d109da6ab3506c9e9577f98c6a38771ab335"
+    ApprovedCommit = "3de37c8cfb039452be7398909461da6288babf15"
+}
+
 function Invoke-Git {
     param(
         [Parameter(Mandatory)]
@@ -48,6 +61,17 @@ function Test-Ancestor {
 
     & git -C $Repository merge-base --is-ancestor $Commit HEAD
     return ($LASTEXITCODE -eq 0)
+}
+
+function Test-ReviewedBase {
+    param(
+        [string]$Repository,
+        [string]$UpstreamCommit,
+        [string]$ApprovedCommit
+    )
+
+    $base = @(Invoke-Git -Repository $Repository -Arguments @("merge-base", "--all", "HEAD", $UpstreamCommit))
+    return ($base.Count -eq 1 -and $base[0] -eq $ApprovedCommit)
 }
 
 # A beta is tagged exactly like a stable release, so the tag name cannot tell
@@ -136,11 +160,12 @@ function Get-Gitlinks {
 function Test-AndroidSubmodulePins {
     param(
         # Not Mandatory: PowerShell refuses an empty list for a mandatory parameter.
-        [System.Collections.Generic.List[string]]$Failures
+        [System.Collections.Generic.List[string]]$Failures,
+        [string]$UpstreamBase
     )
 
     $fork = Get-Gitlinks -Treeish "HEAD"
-    $upstream = Get-Gitlinks -Treeish "upstream/master"
+    $upstream = Get-Gitlinks -Treeish $UpstreamBase
     $pinLines = [System.Collections.Generic.List[string]]::new()
     foreach ($path in @(@($fork.Keys) + @($upstream.Keys) | Sort-Object -Unique)) {
         $forkPin = if ($fork.ContainsKey($path)) { $fork[$path] } else { "(absent)" }
@@ -154,7 +179,7 @@ function Test-AndroidSubmodulePins {
         $pinLines.Add("  $path`n    fork pin:     $forkPin`n    upstream pin: $upstreamPin")
     }
     if ($pinLines.Count -gt 0) {
-        $Failures.Add("Android submodule pins differ from upstream/master (G79 - a merge kept old gitlinks; stale native pins crash at runtime, not at build):`n$($pinLines -join "`n")`nMove each pin to upstream's commit inside that submodule, commit the gitlink in android/novagram-android, or add a justified entry to `$androidPinAllowList.")
+        $Failures.Add("Android submodule pins differ from reviewed upstream $UpstreamBase (G79 - a merge kept old gitlinks; stale native pins crash at runtime, not at build):`n$($pinLines -join "`n")`nMove each pin to upstream's commit inside that submodule, commit the gitlink in android/novagram-android, or add a justified entry to `$androidPinAllowList.")
     }
 
     $treeLines = [System.Collections.Generic.List[string]]::new()
@@ -198,7 +223,7 @@ function Get-LastProjectCheck {
     if ($null -ne $SavedState) {
         $entry = $SavedState.$Name
         if ($null -ne $entry -and $entry.checkedAtUtc) {
-            return [DateTimeOffset]::Parse($entry.checkedAtUtc)
+            return [DateTimeOffset]$entry.checkedAtUtc
         }
     }
     return [DateTimeOffset]::MinValue
@@ -207,8 +232,8 @@ function Get-LastProjectCheck {
 $now = [DateTimeOffset]::UtcNow
 $desktopLastCheck = Get-LastProjectCheck -SavedState $state -Name "desktop"
 $androidLastCheck = Get-LastProjectCheck -SavedState $state -Name "android"
-$refreshDesktop = $Force -or (($now - $desktopLastCheck).TotalHours -ge $MaxAgeHours)
-$refreshAndroid = $Force -or (($now - $androidLastCheck).TotalHours -ge $MaxAgeHours)
+$refreshDesktop = $Force -or $desktopWidgetHold -or (($now - $desktopLastCheck).TotalHours -ge $MaxAgeHours)
+$refreshAndroid = $Force -or $androidWidgetHold -or (($now - $androidLastCheck).TotalHours -ge $MaxAgeHours)
 
 if ($Project -in @("All", "Desktop") -and $refreshDesktop) {
     Invoke-Git -Repository $desktopRoot -Arguments @("fetch", "upstream", "--prune", "--tags") | Out-Null
@@ -231,7 +256,20 @@ if ($Project -in @("All", "Desktop")) {
         # Not a failure: the ledger rule (I20) wants the beta looked at, not shipped.
         Write-Warning "Upstream Desktop beta $($desktopTags.Newest) is newer than the stable base $desktopTag. Check the ledger rows against it (docs/NOVAGRAM.md, 10.1); do not build on it."
     }
-    if (!(Test-Ancestor -Repository $desktopRoot -Commit $desktopCommit)) {
+    $desktopHeld = $desktopTag -eq $desktopWidgetHold.UpstreamTag -and
+        $desktopTags.Newest -eq $desktopWidgetHold.UpstreamTag -and
+        $desktopCommit -eq $desktopWidgetHold.UpstreamCommit
+    if ($desktopWidgetHold -and !$desktopHeld) {
+        $failures.Add("Desktop upstream changed during the widget security hold ($desktopTag, $desktopCommit). Review the new upstream before building.")
+    } elseif ($desktopHeld) {
+        $approved = $desktopWidgetHold.ApprovedCommit
+        if (Test-ReviewedBase -Repository $desktopRoot -UpstreamCommit $desktopCommit -ApprovedCommit $approved) {
+            $result.desktop.approvedBase = $approved
+            Write-Warning "Desktop widget security hold: using v7.3.5 ($approved) while upstream is $desktopTag."
+        } else {
+            $failures.Add("Desktop widget security hold requires the reviewed base v7.3.5 ($approved).")
+        }
+    } elseif (!(Test-Ancestor -Repository $desktopRoot -Commit $desktopCommit)) {
         $failures.Add("Desktop base is behind $desktopTag ($desktopCommit). Integrate that official tag before building.")
         $baseBehind = $true
     }
@@ -243,11 +281,22 @@ if ($Project -in @("All", "Android")) {
     $androidCommit = (@(Invoke-Git -Repository $androidRoot -Arguments @("rev-parse", "upstream/master")))[0].ToString().Trim()
     $androidCheckedAt = if ($refreshAndroid) { $now } else { $androidLastCheck }
     $result.android = [ordered]@{ checkedAtUtc = $androidCheckedAt.ToString("O"); ref = "upstream/master"; commit = $androidCommit }
-    if (!(Test-Ancestor -Repository $androidRoot -Commit $androidCommit)) {
+    $androidBase = $androidCommit
+    if ($androidWidgetHold -and $androidCommit -ne $androidWidgetHold.UpstreamCommit) {
+        $failures.Add("Android upstream changed during the widget security hold ($androidCommit). Review the new upstream before building.")
+    } elseif ($androidWidgetHold) {
+        $androidBase = $androidWidgetHold.ApprovedCommit
+        if (Test-ReviewedBase -Repository $androidRoot -UpstreamCommit $androidCommit -ApprovedCommit $androidBase) {
+            $result.android.approvedBase = $androidBase
+            Write-Warning "Android widget security hold: using 13.1.1 ($androidBase) while upstream is $androidCommit."
+        } else {
+            $failures.Add("Android widget security hold requires the reviewed base 13.1.1 ($androidBase).")
+        }
+    } elseif (!(Test-Ancestor -Repository $androidRoot -Commit $androidCommit)) {
         $failures.Add("Android base is behind upstream/master ($androidCommit). Integrate that official commit before building.")
         $baseBehind = $true
     }
-    Test-AndroidSubmodulePins -Failures $failures
+    Test-AndroidSubmodulePins -Failures $failures -UpstreamBase $androidBase
 } elseif ($null -ne $state -and $null -ne $state.android) {
     $result.android = $state.android
 }
@@ -262,9 +311,9 @@ if ($failures.Count -gt 0) {
     throw ($failures -join "`n")
 }
 
-if ($result.desktop) {
+if ($Project -in @("All", "Desktop") -and !$result.desktop.approvedBase) {
     Write-Host "Desktop upstream OK: $($result.desktop.tag) ($($result.desktop.commit.Substring(0, 12)))"
 }
-if ($result.android) {
+if ($Project -in @("All", "Android") -and !$result.android.approvedBase) {
     Write-Host "Android upstream OK: $($result.android.commit.Substring(0, 12))"
 }
